@@ -1,0 +1,23 @@
+<RCC>
+  <qresource prefix="/plugins/SWDEImport2">
+    <file>res/application-exit.png</file>
+    <file>res/document-open.png</file>
+    <file>res/document-save.png</file>
+    <file>res/documentation.png</file>
+    <file>res/gtk-properties.png</file>
+    <file>res/help-contents.svg</file>
+    <file>res/help-info.svg</file>
+    <file>res/icon.png</file>
+    <file>res/preferences-other.png</file>
+    <file>res/preferences-system.png</file>
+    <file>res/stock_file-properites.png</file>
+    <file>res/swde-plug-import-16.png</file>
+    <file>res/swde-plug-import-16b.png</file>
+    <file>res/swde-plug-import-22.png</file>
+    <file>res/xfce-system.png</file>
+    <file>res/system-run.png</file>
+    <file>res/swde-plug-import-32b.png</file>
+    <file>res/swde-plug-import-32.png</file>
+    <file>res/swde-plug-import-22b.png</file>
+  </qresource>
+</RCC>
