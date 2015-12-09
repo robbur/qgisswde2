@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/plugins/SWDESzukaj">
+    <file>icons/view-refresh.png</file>
+    <file>icon.png</file>
+  </qresource>
+</RCC>
