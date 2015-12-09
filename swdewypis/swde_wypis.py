@@ -21,7 +21,7 @@
  ***************************************************************************/
 """
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, QObject, SIGNAL
-from PyQt4.QtGui import QAction, QIcon, QPrintDialog, QFileDialog, QDialog
+from PyQt4.QtGui import QAction, QIcon, QPrintDialog, QFileDialog, QDialog, QMessageBox
 # Initialize Qt resources from file resources.py
 import resources_rc
 # Import the code for the dialog
@@ -212,22 +212,22 @@ class SWDEWypis:
         
         for f in layer.selectedFeatures():
             uid_dze =  f['tab_uid']
-            break
+            break 
         
-        self.dlg.txtFeedback.setText(uid_dze) 
-            
-        
-        
-         
-       
-        #dane dotyczace serwera odczytane z QSettings
-        sett = QSettings('erdeproj', 'SWDE_qgis_plugin')
-        self.pguser = sett.value('pguser', '', type=str)
-        self.pgbase = sett.value('pgbase', '', type=str)
-        self.pguserpswd = sett.value('pguserpswd', '', type=str)
-        self.pgserver = sett.value('pgserver', '', type=str)
+        if uid_dze == "":
+            komunikat = u"<BR><BR><HR><H3>Nie wybrano żadnej warstwy, nie zaznaczono żadnego obiektu lub warstwa nie jest prawidłową warstwą działek ewidencyjnych</HR><H3>"
+            self.dlg.txtFeedback.setText(komunikat)
+        else:
+            #dane dotyczace serwera odczytane z QSettings
+            sett = QSettings('erdeproj', 'SWDE_qgis_plugin')
+            self.pguser = sett.value('pguser', '', type=str)
+            self.pgbase = sett.value('pgbase', '', type=str)
+            self.pguserpswd = sett.value('pguserpswd', '', type=str)
+            self.pgserver = sett.value('pgserver', '', type=str)
 
-        self.dlg.txtFeedback.setText( self.dzeInfo(uid_dze))
+            self.dlg.txtFeedback.setText( self.dzeInfo(uid_dze))
+
+       
         
         
         self.dlg.show()
@@ -284,10 +284,13 @@ class SWDEWypis:
         for f in layer.selectedFeatures():
             uid_dze =  f['tab_uid']
             break
-        
-        self.actualSelect=0
 
-        self.dlg.txtFeedback.setText( self.dzeInfo(uid_dze))
+        if uid_dze == "":
+            komunikat = u"<BR><BR><HR><H3>Nie wybrano żadnej warstwy, nie zaznaczono żadnego obiektu lub warstwa nie jest prawidłową warstwą działek ewidencyjnych</HR><H3>"
+            self.dlg.txtFeedback.setText(komunikat)
+        else:
+            self.actualSelect=0
+            self.dlg.txtFeedback.setText( self.dzeInfo(uid_dze))
     
     #-----------------------------------------------------------------------------------
     def pbtnPrevClicked(self):
