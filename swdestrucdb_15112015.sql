@@ -345,6 +345,7 @@ CREATE TABLE g5jew
   g5id2 character varying(50), -- Identyfikator tekstowy rekordu w plikach swde - występuje zaraz po definicji rekordu - czyli w liniach RD i RO, tuż po wartości liczbowej i jest ciągiem różnistych znaków.
   g5id1 character varying(50),
   tab_uid character varying(50) NOT NULL, -- Unikalny identyfikator, będący kluczem głównym. Stanowi połączenie id_zd i g5id1 - nie ma więc możliwości zdublowania
+  plik_data character varying(25),
   CONSTRAINT g5jew_pkey PRIMARY KEY (tab_uid ),
   CONSTRAINT g5jew_g5idj_key UNIQUE (g5idj )
 )
