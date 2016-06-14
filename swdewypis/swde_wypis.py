@@ -358,6 +358,8 @@ class SWDEWypis:
         nr_obr = g5dzeT.get_col_value('nrobr')
         nr_jew = g5dzeT.get_col_value('id_zd')
         id_jdr = g5dzeT.get_col_value('g5rjdr')
+	if id_jdr == None:
+		id_jdr = '0'
         dze_id1 = g5dzeT.get_col_value('g5id1')
         id_zd = g5dzeT.get_col_value('id_zd')
         dze_uid = g5dzeT.get_col_value('tab_uid')
@@ -369,10 +371,11 @@ class SWDEWypis:
         g5obrT = RobDBTable(self.rdbase, 'g5obr', cols, 1, 1)
         g5obrT.where(['g5nro'], [nr_jew + "." + nr_obr])
         txt += u"<b>Obręb:</b> " + uni(g5obrT.get_col_value('g5naz')) + "(" + g5obrT.get_col_value('g5nro')+ ")<br>"
-        cols = ['g5idj', 'g5naz']
+        cols = ['g5idj', 'g5naz', 'plik_data']
         g5jewT = RobDBTable(self.rdbase, 'g5jew', cols, 1,1)
         g5jewT.where(['g5idj'], [nr_jew])
         txt += "<b>Jednostka ewidencyjna: </b>" + uni(g5jewT.get_col_value('g5naz')) + " (" + g5jewT.get_col_value('g5idj') + ")<br>"
+        plik_data = uni(g5jewT.get_col_value('plik_data'))
         cols = ['g5id1', 'g5tjr', 'g5ijr', 'g5rgn']
         g5jdrT = RobDBTable(self.rdbase, 'g5jdr', cols, 1, 1)
         g5jdrT.where(['id_zd', 'g5id1'], [nr_jew, id_jdr])
@@ -627,6 +630,6 @@ class SWDEWypis:
 
 
 
-        txt+= "<HR></HR><BR><RIGHT>" + time.strftime("%Y-%m-%d %H:%M:%S") + "</RIGHT>"
+        txt+= "<HR></HR><BR><RIGHT>" + time.strftime("%Y-%m-%d %H:%M:%S") + " (plik SWDE z dnia: " +  plik_data + ")</RIGHT>"
         return txt
     

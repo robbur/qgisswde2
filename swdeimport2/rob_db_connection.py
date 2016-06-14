@@ -192,7 +192,7 @@ class RobDBTable():
 
     def update(self, uid, update_cols_list, update_values_list):
         #TODO osluga wyjatkow
-        sqlStr=  "update " +  rdtable.table + " set "
+        sqlStr=  "update " +  self.table + " set "
 
         ilosc = len(update_cols_list)
         for i in range(0, ilosc):
@@ -201,7 +201,49 @@ class RobDBTable():
             else:
                 sqlStr = sqlStr + "', " +  update_cols_list[i] + "='" + update_values_list[i]
         sqlStr= sqlStr+ "' where "  + rdtable.get_id_name() + "='" +  str(uid) + "'"
-        self.cur.execute(SQLstr)
+        self.cur.execute(sqlStr)
+        if self.autocommit == 1:
+            self.base.commit()
+
+    def update_where(self, update_cols_list, update_values_list, where_cols_list, where_values_list):
+        #TODO osluga wyjatkow
+        sqlStr=  "update " +  self.table + " set "
+
+        ilosc = len(update_cols_list)
+        znak = "='"
+        znak2 = "' "
+        for i in range(0, ilosc):
+            if znak == "=":
+                znak2 = ","
+            elif znak == "='":
+                znak2 = "', "
+            if update_values_list[i][0:5] == "ARRAY":
+                znak = "="
+            else:
+                znak = "='"
+
+            if i == 0:
+                sqlStr = sqlStr + update_cols_list[i] + znak + update_values_list[i]
+            else:
+                sqlStr = sqlStr + znak2 +  update_cols_list[i] + znak + update_values_list[i]
+
+
+        if len(where_cols_list) == len(where_values_list):
+            where_str = ""
+            for i in range(0,len(where_cols_list)):
+                if where_str == "":
+                    where_str = where_str + '  "' + where_cols_list[i] + '" = ' + "'" + where_values_list[i] + "'" 
+                else:
+                    where_str = where_str + ' and  "' + where_cols_list[i] + '" = ' + "'" + where_values_list[i] + "'" 
+
+        znak3 = ""
+        if znak == "=":
+            znak3 = ""
+        else:
+            znak3 = "'"
+        sqlStr= sqlStr + znak3 + " where "  + where_str
+        print sqlStr
+        self.cur.execute(sqlStr)
         if self.autocommit == 1:
             self.base.commit()
 

@@ -203,6 +203,7 @@ class SWDESzukaj:
         db.setUserName(self.pguser)
         db.setPassword(self.pguserpswd)
         ok = db.open()
+        print ok
         #self.model.setQuery("select * from g5jew")
         self.cmbjew_model.setQuery("select id_zd, g5naz from g5jew order by g5naz")
         self.dlg.cmbxJEW.setModel(self.cmbjew_model)

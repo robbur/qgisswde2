@@ -756,6 +756,13 @@
                  </widget>
                 </item>
                 <item>
+                 <widget class="QRadioButton" name="rdbtnUzupelnienieOpis">
+                  <property name="text">
+                   <string>Uzup. danych opis.</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QPushButton" name="pbtnImportuj">
                   <property name="text">
                    <string>Importuj...</string>

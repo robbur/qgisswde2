@@ -51,6 +51,7 @@ import sys
 class SWDEImport2:
     """QGIS Plugin Implementation."""
     swde_file = ""
+    plik_data = "" 
     ilosc_linii = ""
     pzgdic = {}
     pguser = ""
@@ -503,6 +504,8 @@ class SWDEImport2:
             rodz_importu = 'zwykly'
         elif self.dlg.rdbtnAktualizacja.isChecked():
             rodz_importu = 'aktualizacja'
+        elif self.dlg.rdbtnUzupelnienieOpis.isChecked():
+            rodz_importu = 'uz_opis'
         elif self.dlg.rdbtnImportTestowy.isChecked():
             if self.dlg.rdbtnTestowyJEW.isChecked():
                 rodz_importu = 'testowyJEW'
@@ -537,11 +540,19 @@ class SWDEImport2:
 #-------------------------------------------------------------------------------#
     def SwdeToPostgis(self, swde_file, tableListString, srid, pyproj4strFrom, pyproj4strTo, rodz_importu, pgserver, pgbase, pguser, pguserpswd, txtcodec, id_jed_rej):
         
+        #TODO przewidziec pominiecie tego kroku podczas importu uzupełniającego danych opisowych
         uni = lambda s: s if type(s) == unicode else unicode(s,'utf-8','replace')
         #....................zczęść odpowiedzialna za pzg.......................
         ##wypelnienie struktury słownikowej z rozwinięciami punktów granicznych
         pzgdic = {}
+    
+        uz_opis = False
+        if rodz_importu == 'uz_opis':
+            uz_opis = True
+       
         ilosc_pzg = 0
+        dze_g5idd = '' #specjalna wartosc, identyfikator dzialki w tabeli dzialek - wykorzystywane tylko w przypadku uzupelniania danych opisowych
+            #czyli rodz_umportu uz_opis
         dic_idx = ""
         rp = 0
         ile_lini_step = 0 #liczba linii w poszczególnym kroku - pomocne przy wyrzucaniu informacji o aktualnym
@@ -563,7 +574,10 @@ class SWDEImport2:
                 #self.f = open(str(self.swde_file.toUtf8()).decode('utf-8'), "r")
                 f = open(swde_file, "r")
                 self.dlg.peditOutput.appendPlainText(( "Plik" + uni(swde_file) + "otwarty do odczytu: " + time.strftime("%Y-%m-%d %H:%M:%S")))
-                self.dlg.peditOutput.appendPlainText("analiza PZG:  /")
+                if uz_opis:
+                    self.dlg.peditOutput.appendPlainText("wyszukiwanie identyfikatora jednostki rejestrowej:  /")
+                else:
+                    self.dlg.peditOutput.appendPlainText("analiza PZG:  /")
                 QApplication.processEvents()
                 try:
                     for line in f.readlines():
@@ -571,7 +585,14 @@ class SWDEImport2:
                         ile_lini_step+=1
                         if StringBetweenChar(line, ',', 0) == "NS" and StringBetweenChar(line, ',', 1) == "ZD":
                             id_jr = StringBetweenChar(line, ',', 2)
-                        pocz = StringBetweenChar(line, ',',0)
+                            if uz_opis:
+                                break
+
+                        if StringBetweenChar(line, ',',1) == "DN":
+                            self.plik_data =  StringBetweenChar(line, ',',2)
+                            self.dlg.peditOutput.appendPlainText( u"Plik SWDE z dnia --  " + uni(self.plik_data))
+
+                        pocz = StringBetweenChar(line, ',',0)        
                         if pocz == "RP":
                             tab = StringBetweenChar(line, ',',2)
                             if tab == "G5PZG":
@@ -627,6 +648,7 @@ class SWDEImport2:
         
         
         tableList = [] #tabela nazw tabel w bazie
+        grafTableList = [] #nazwy tabel z grafiką w bazie
         
         
         import_testowy = False
@@ -647,14 +669,17 @@ class SWDEImport2:
                 plcharCols =  {u'G5RŻONA':'G5RZONA', u'G5RMĄŻ':'G5RMAZ', u'G5RPWŁ':'G5RPWL', u'G5RWŁ':'G5RWL', u'G5RWŁS':'G5RWLS', u'G5RWŁD':'G5RWLD'}
                 g5Cols = {} #słownik zbudowany: {'nazwa_tabeli':Tablica_Column[]} - posluzy do inicjacji tabel - obiektow robdbtable 
                 #inicjalizacja  bazy danych
+					#wartosc przekraczajaca przewdidziana dlugosc wartosci w bazie, jako zabezpieczenie przed bledem 'to long value...'
                 rdbase = RobDBBase(pgserver, pgbase, pguser, pguserpswd,1)
                 rdg5Table = {}  #słownik zawiera następującą strukturę: {'nazwa_tabeli': Obiekt_rdbtable}
                 
-                #okreslenie rodzaju importu
+                #colsLen = {} #slownik zbudowany: {'nazwa_tabeli':{'nazwa_kolumny':dlugosc}} - posluzy do sprawdzania czy do bazy nie zostanie zapisana
+                colsLen = {'G5ADR':{'TAB_UID':50,  'G5TAR':1,  'G5NAZ':150,  'G5KRJ':100,  'G5WJD':100,  'G5PWJ':100,  'G5GMN': 100,  'G5ULC': 255,  'G5NRA':50,  'G5NRL': 50,  'G5MSC':100,  'G5KOD':50,  'G5PCZ': 100,  'G5DTW':25,  'G5DTU':25,  'ID_ZD':50,  'G5ID2':50,  'G5ID1':50},    'G5BUD':{'TAB_UID':50,  'G5IDB':50,   'G5FUZ':2,   'G5DWR':20,   'G5RZN':50,   'G5SCN':1,   'G5RADR':50,  'G5RPWL':50,  'G5RPWD':50,  'G5RKRG':50,  'G5RJDR':50,  'G5RDZE':50,  'G5DTW':25,  'G5DTU':25,   'ID_ZD':50 ,  'G5ID2':50,  'G5ID1':50  },    'G5DOK':{  'TAB_UID':50,  'G5KDK':10,  'G5DTD':25,  'G5DTP':25,  'G5SYG':255,  'G5NSR':255,  'G5RDOK':50,  'G5DTW':25,   'G5DTU':25,   'ID_ZD':40,   'G5ID2':50,  'G5ID1':50,  },  'G5DZE':{ 'G5IDD':40,  'NR':20,  'ID_ZD':50,  'G5IDR':100,  'G5NOS':100,  'G5WRT':20,  'G5DWR':25,  'G5RZN':100,  'G5DWW':25,  'G5RADR':50,  'G5RPWL':50,  'G5RPWD':50,  'G5RJDR':50,  'G5DTW':25,  'G5DTU':25,   'G5RKRG':50,  'G5ID2':50,  'G5ID1':50,  'NROBR':10,  'TAB_UID':50  },    'G5DZE_TEST':{ 'G5IDD':40,  'NR':20,  'ID_ZD':50,  'G5IDR':100,  'G5NOS':100,  'G5WRT':20,  'G5DWR':25,  'G5RZN':100,  'G5DWW':25,  'G5RADR':50,  'G5RPWL':50,  'G5RPWD':50,  'G5RJDR':50,  'G5DTW':25,  'G5DTU':25,   'G5RKRG':50,  'G5ID2':50,  'G5ID1':50,  'NROBR':10,  'TAB_UID':50  },    'G5INS':{  'G5STI':2,   'G5NPE':255,  'G5NSK':255,   'G5RGN':20,  'G5NIP':20,  'G5NZR':100,  'G5NRR':50,  'G5NSR':255,  'G5RADR':50,  'G5DTW':25,  'G5DTU':25,   'ID_ZD':40,  'G5ID2':50,  'G5ID1':50,  'TAB_UID':50  },    'G5JDR':{  'G5TJR': 1,  'G5IJR':50,  'G5RGN':20,  'G5RWL':1,  'G5RWLS':50,  'G5RWLD':50,  'G5ROBR':50,  'G5DTW':25,  'G5DTU':25,  'ID_ZD':40,  'G5ID2':50,  'G5ID1':50,  'TAB_UID':50  },  'G5JEW':{  'G5IDJ':20,  'G5NAZ':50,  'G5DTW':25,  'G5DTU':25,  'G5RKRG':20,  'ID_ZD':50,  'G5ID2':50,  'G5ID1':50,  'TAB_UID':50  },  'G5JEW_TEST':{  'G5IDJ':20,  'G5NAZ':50,  'G5DTW':25,  'G5DTU':25,  'G5RKRG':20,  'ID_ZD':50,  'G5ID2':50,  'G5ID1':50,  'TAB_UID':50  },  'G5KKL':{  'TAB_UID':50,  'G5IDK':50,  'G5OZU':10,  'G5OZK':10,  'G5RKRG':50,  'G5ROBR':50,  'G5DTW':25,  'G5DTU':25,  'ID_ZD':40,  'G5ID2':50,  'G5ID1':50  },  'G5KLU':{  'G5OFU':10,  'G5OZU':10,  'G5OZK':5,  'G5RDZE':50,  'G5DTW':25,  'G5DTU':25,  'ID_ZD':40,  'G5ID2':50,  'G5ID1':50,  'TAB_UID':50  },  'G5LKL':{  'TAB_UID':50 ,  'G5IDL':50,   'G5TLOK':1, 'G5DWR':25,   'G5RJDR':50,   'G5RADR':50,   'G5RDOK':50,   'G5RBUD':50,   'G5DTW':25,   'G5DTU':25,   'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50  },  'G5MLZ':{  'G5DTW':25,   'G5DTU':25,   'ID_ZD':40 ,   'G5ID2':50,   'G5RMAZ':50,  'G5RZONA':50,  'G5ID1':50,  'TAB_UID':50},  'G5OBR':{  'G5NRO':40 ,   'G5NAZ':50,   'G5DTW':25,  'G5DTU':25,  'G5RKRG':20,  'G5RJEW': 20,  'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50,  'TAB_UID':50 ,   'IDJEW':50},  'G5OBR_TEST':{  'G5NRO':40 ,   'G5NAZ':50,   'G5DTW':25,  'G5DTU':25,  'G5RKRG':20,  'G5RJEW': 20,  'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50,  'TAB_UID':50 ,   'IDJEW':50},  'G5OSF':{  'G5PLC':1,   'G5PSL':15,  'G5NIP':20,   'G5NZW':100,   'G5PIM':50,   'G5DIM':50,   'G5OIM':50,   'G5MIM':50,   'G5OBL':50,   'G5DOS':50,   'G5RADR':50,   'G5STI': 1,  'G5DTW':25,  'G5DTU':25,   'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50 ,  'TAB_UID':50} ,  'G5OSZ':{  'G5STI': 2,   'G5NPE':255,   'G5NSK':255,   'G5RGN':20,  'G5NIP':20,  'G5RADR':50,  'G5DTW':25,   'G5DTU':25,   'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50,  'G5RSKD':50,  'TAB_UID':50} ,  'G5UDW':{  'G5RWD': 1,   'G5UD':50,   'G5RWLD':50,   'G5RPOD':50,   'G5DTW':25,   'G5DTU':25,   'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50,   'RPOD_RODZAJ':20,  'ID_PODMIOT':50,   'TAB_UID':50} ,  'G5UDZ':{  'G5UD':50,   'G5RWLS':50,   'G5RPOD':50,   'G5DTW':25,   'G5DTU':25,   'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50,  'RPOD_RODZAJ':20,  'ID_PODMIOT':50,   'G5UDZ_URPOD':50,   'TAB_UID':50},   'G5UZG':{  'G5IDT':50,   'G5OZU':10,   'G5RKRG':50,   'G5ROBR':50,   'G5DTW':25,   'G5DTU':25,   'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50,   'G5OFU':10,  'TAB_UID':50} ,  'G5ZMN':{  'TAB_UID':50 ,  'G5NRZ':50,   'G5STZ':255,   'G5DZZ':25,   'G5DTA':25,   'G5DTZ':25,   'G5NAZ':255,   'G5ROBJ':50,   'G5RDOK':50,   'G5DTW':25,   'G5DTU':25,   'ID_ZD':40 ,   'G5ID2':50,   'G5ID1':50}}
+                #OKRESLENIe rodzaju importu
                 
                 self.dlg.peditOutput.appendPlainText("rodzaj importu : " + rodz_importu)
                 
-                if rodz_importu == 'zwykly' or rodz_importu == 'aktualizacja':
+                if rodz_importu == 'zwykly' or rodz_importu == 'aktualizacja' or rodz_importu == 'uz_opis':
                     Cols = ['G5IDJ', 'G5PEW', 'G5NAZ', 'G5DTW', 'G5DTU','G5RKRG']#g5jew
                     g5Cols['G5JEW'] = Cols
                     Cols = [ 'G5IDD',  'GEOM',    'NR', 'G5IDR', 'G5NOS', 'G5WRT', 'G5DWR', 'G5PEW', 'G5RZN', 'G5DWW', 'G5RADR', 'G5RPWL', 'G5RPWD', 'G5RKRG', 'G5RJDR', 'G5DTW', 'G5DTU'] #g5dze
@@ -693,6 +718,7 @@ class SWDEImport2:
                     g5Cols['G5ZMN'] = Cols
          
                     tableList = tableListString.split(',')
+                    grafTableList.append('G5DZE')
          
                 elif rodz_importu == 'testowyJEW' or rodz_importu == 'testowyOBR' or rodz_importu == 'testowyDZE':
                     #teoretycznie powinno wystarczyć zwykle elif bez parametrow, ale na wszelki dorzuce te ory
@@ -799,6 +825,8 @@ class SWDEImport2:
                             if pocz == "RO" or pocz == "RD" or pocz == "RC":
                                 #line = unicode(line, txtcodec)
                                 G5Table =  StringBetweenChar(line, ',',2)
+                                if G5Table == 'G5G_DZE' or G5Table == 'G5O_DZE':
+                                    G5Table = 'G5DZE'
                                 g5id1_value = StringBetweenChar(line,',',3)
                                 g5id2_value = StringBetweenChar(line,',',4)
                             if line[0:3] == "P,P":
@@ -845,6 +873,13 @@ class SWDEImport2:
                                     colvalue = StringBetweenChar(line,',',3)
                                     #dzialania wspolne dla wszystkich tablic
                                     if colname in g5Cols[G5Table]:
+                                        #sprawdzenie czy wartosc colvalue nie przekracza maksymelnej dlugosci pola przewidzianego w bazie
+                                        if colsLen[G5Table].has_key(colname):
+                                            if len(colvalue) > colsLen[G5Table][colname]:
+                                                oldcolvalue = colvalue
+                                                colvalue = colvalue[0:colsLen[G5Table][colname]]
+                                                self.dlg.peditOutput.appendPlainText( u"blablabla - old: " + oldcolvalue + '##### new: ' + colvalue ) 
+
                                         #G5RDZE w G5KLU nie jest typu tablicowego, natomiast w g5BUD
                                         #jest. Na szczescie w g5klu nie ma żadnego pola tablicowego
                                         #to samo dotyczy g5radr - w g5osf i g5ins - nie jest array w przeciwienstwie do g5bud
@@ -856,14 +891,22 @@ class SWDEImport2:
                                             valuelist.append(colvalue)
          
                                         #dzialania nietypowe
+                                        
                                         #TODO przewidziec dla g5obr wyluskanie numeru obrebu do osobnego pola
                                         if colname == 'G5IDD' and G5Table == "G5DZE": #trzeba wyluskac numer dzialki i zapisac do oddzielnej kolumny
                                             #nr_dzialki = StringBetweenChar(colvalue, '.', 2)
+											# zmiana 08-01-2016 - zazwyczaj numer wystepuje po drugiej kropce, bo g5idd to 
+											#zazwyczaj teryt, ale niestety sa wyjatki i po numerze obrebu czasem wystepuje
+											#jeszcze jakis ciag znakow i dopiero potem nr dzialki. dlatego trzeba wyszukac
+											#pozycje ostatniej kropki 
                                             collist.append(u'nr')
-                                            valuelist.append(StringBetweenChar(colvalue, '.', 2))
+                                            valuelist.append(StringBetweenChar(colvalue, '.', colvalue.count(".")))
                                             #nr obrębu też się przyda
                                             collist.append(u'nrobr')
                                             valuelist.append(StringBetweenChar(colvalue, '.', 1))
+
+                                            #zapamietanie wartosci g5idd - moze sie przydac do updata
+                                            dze_g5idd = colvalue
          
          
                                         if colname == 'G5RPOD': #dla tabel g5udz i g5udw - wyglada to nastepujaco: "WG,G5RPOD,G5OSF,5465;"
@@ -887,6 +930,14 @@ class SWDEImport2:
                                     if StringBetweenChar(line, ',',1) != 'brakPZG':
                                         yvalue = StringBetweenChar(line, ',',2)
                                         xvalue = StringBetweenChar(line, ',',3)
+                                        #jezeli bedzie cos walniete w pliku swde to program sie moze wywalic
+                                        #ponizej nastapi zamiana na wartosc liczbowa 0.0 - lepiej zaimportowac plik
+                                        #z bledami niz nie zaimportowac wcale, bledy te bedzie latwo wylapac w qgisie
+                                        #i poprawic
+                                        if czyLiczba(yvalue) == False:
+                                            yvalue = '0.0'
+                                        if czyLiczba(xvalue) == False:
+                                            xvalue = '0.0'
                                         #print "xv:", xvalue, "yv:", yvalue
                                         if transform:
                                             pt1 = xform.transform(QgsPoint(float(xvalue), float(yvalue)))
@@ -961,7 +1012,11 @@ class SWDEImport2:
                                     #dodanie unikatowej kolumny - będzie stanowiła klucz główny w całej bazie
                                     collist.append('tab_uid')
                                     valuelist.append(id_jed_rej+g5id1_value)
-         
+                                    #dodanie daty pliku swde do tabeli g5jew
+                                    if G5Table == "G5JEW":
+                                        collist.append(u'plik_data')
+                                        valuelist.append(self.plik_data)
+
          
                                     #sprawdzenie czy jest jeszcze jakas tablica, ktora nie zostala dodana do valuelist
                                     if len(arrayvalue)>0:
@@ -973,8 +1028,18 @@ class SWDEImport2:
                                         valuelist.append(u"ARRAY[" + values + "]")
                                         arrayname = ''
                                         arrayvalue = []
-         
-                                    rdg5Table[G5Table].insert(0, collist, valuelist)
+
+                                    #wstawienie danych do tabeli
+                                    
+                                    if uz_opis and (G5Table == 'G5DZE' or G5Table == 'G5DOK'):
+                                        if G5Table == 'G5DZE':
+                                            #self.dlg.peditOutput.appendPlainText(G5Table, dze_g5idd)
+                                            rdg5Table[G5Table].update_where(collist, valuelist, ['id_zd', 'g5idd'], [id_jed_rej, dze_g5idd])
+                                        
+                                    else:
+                                        rdg5Table[G5Table].insert(0, collist, valuelist)
+
+
                                     if G5Table in insertdic:
                                         insertdic[G5Table] += 1
                                     else:
@@ -1005,7 +1070,7 @@ class SWDEImport2:
                             values += value + ", "
                         cols += "]"
                         values += "]"
-                        self.dlg.peditOutput.appendPlainText( u"błąd: " + uni(G5Table) +  uni(cols) + uni(values) + "rekord nr: " + uni(str(obieg)) + "line = " +  uni(tekstline) + "error: " + uni(str(ex)))
+                        self.dlg.peditOutput.appendPlainText( u"błąd--: " + uni(G5Table) +  uni(cols) + uni(values) + "rekord nr: " + uni(str(obieg)) + "line = " +  uni(tekstline) + "error: " + uni(str(ex)))
          
                     finally:
                         
@@ -1083,4 +1148,12 @@ def StringBetweenChar(string, char, nr):
         return  string[char_pos:char_nextpos]
     else:
         return -1
-
+#-----------------------------------------------------------------
+def czyLiczba(l):
+    a = 0
+    try:
+        float(l)
+        a = True
+    except ValueError:
+        a = False
+    return a
